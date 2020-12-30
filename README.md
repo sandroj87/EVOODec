@@ -12,6 +12,6 @@ The contribuition of the oil matrix is accounted by also including the
 triolein (TRIO) absorption. The pigments actually available are:
 * Pheophytin a (Pheo-a)
 * Pheophytin b (Pheo-b)
-* Beta-carotene (b-CAR)
+* Beta-Carotene (b-CAR)
 * Lutein (LUT)
-* Neoxantin (NEX)
+* Neoxanthin (NEX)
