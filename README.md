@@ -2,9 +2,8 @@
 *A deconvolution tool for EVOO abosorption spectra analysis*
 
 Reference paper
-S. Jurinovich and V. Domenici
-*"A digital tool for the analysis of UV-vis spectra of olive oils and educational activities with high school students"*
-J. Chem. Education - Submitted article
+
+S. Jurinovich and V. Domenici, *"A digital tool for the analysis of UV-vis spectra of olive oils and educational activities with high school students"*, J. Chem. Education, Submitted article.
 
 EVOODec is a tool for calculating the concentration of the pigments usually 
 cointened in the extra-virgin olive oil from a spectral deconvolution
