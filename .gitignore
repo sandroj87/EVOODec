@@ -1,0 +1,5 @@
+venv_evoodec/*
+evoodec/__pycache__
+evoodec/build
+evoodec/dist
+evoodec/evoodec.spec

@@ -3,8 +3,8 @@ EVOODec - A deconvolution tool for EVOO abosorption spectra analysis
 
 Author  : Sandro Jurinovich
 E-mail  : sandro.jurinovich@posta.istruzione.it
-Version : 1.0
-Date    : 30/12/2020
+Version : 1.1
+Date    : 02/16/2021
 
 """
 
@@ -14,18 +14,19 @@ Date    : 30/12/2020
 
 # Import Python modules
 import os, sys
+import xlrd
 import numpy as np
-from   PIL import Image, ImageTk
-from   scipy import interpolate
 import matplotlib.pyplot as plt
+from scipy import interpolate
+from functools import partial
 
 # Import Tkinter module for GUI
 import tkinter as tk
-from   tkinter import filedialog
+from tkinter import filedialog
+from tkinter import colorchooser
 
 # Matplotlib integration in Tkinter
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg, NavigationToolbar2Tk)
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
@@ -37,13 +38,13 @@ from matplotlib.figure import Figure
 class EvooDec:
 
     # Properties of EvooDec class
-    VERSION         = "EVOODec - Version 1.0"
+    VERSION         = "EVOODec - Version 1.1"
     
     # Files
     WORKDIR          = os.getcwd()
-    DEF_REF_FILE     = os.path.join(WORKDIR,"data/pigments.csv" )
+    DEF_REF_FILE     = os.path.join(WORKDIR,"pigments/pigments.csv" )
     REF_FILE         = ''
-    DEF_EVOO_FILE    = os.path.join(WORKDIR,"data/evoo_test.CSV")
+    DEF_EVOO_FILE    = os.path.join(WORKDIR,"spectra/evoo_test.csv")
     EVOO_FILE        = ''
     LOGO             = os.path.join(WORKDIR,"logo.png")
 
@@ -79,13 +80,12 @@ class EvooDec:
     filename         = ''
     
     # >>> Constructur for EvooDec class
-    #
-    #
     def __init__(self,master):
 
         master.title(self.VERSION)
         #master.geometry("1024x800")
         master.protocol("WM_DELETE_WINDOW", self.on_closing)
+        master.iconbitmap("%s/%s" % (self.WORKDIR,"logo.ico"))
         self.master = master
 
         # +++ Create main column layout
@@ -156,6 +156,7 @@ class EvooDec:
         
         # Pigment panel
         self.selPigments()
+        self.selColor()
         
         # Create sliders in selPigments panel
         self.slider = []
@@ -174,6 +175,7 @@ class EvooDec:
             slider.grid(column=2,row=row)
             self.slider.append(slider)
             self.slider[i].bind("<ButtonRelease-1>", self.changeConc)
+            
 
         # Textarea
         self.textarea = tk.Text(self.res_frame,height=14,width=35)
@@ -181,10 +183,15 @@ class EvooDec:
         self.textarea.insert(tk.END, self.VERSION)
     
         # Execute button
-        self.btnExe()       # Button for executing deconvolution
-
-    # -------------------------------------------------------------------------   
+        self.btnExe()       # Button for executing deconvolution   
         
+    # >>> Render button for choose pigiment colors
+    def selColor(self):
+        for i,p in enumerate(self.PIGMENTS):
+            print(i)
+            tk.Button(self.pig_frame,width=2,command=partial(self.btnSelectColor,i),bg=self.COLORS[i]).grid(column = 1,row=i+2)
+
+
     # >>> Event handler for sliders
     def changeConc(self,event):
         concppm = []
@@ -199,11 +206,13 @@ class EvooDec:
         self.printResults(ABS_EVOO,ABS_CALC,self.PIGMENTS,concppm,'MANUAL FITTING')
         self.plot(X_EVOO,ABS_EVOO,FILTER,X_REF,EPS_REF,ABS_CALC,ABS_CALC_CONTR)
 
+
     # >>> Close window
     def on_closing(self):
         if tk.messagebox.askokcancel("Quit", "Do you want to quit?"):
             master.destroy()
             sys.exit()
+
 
     # >>> Create button for loading reference compounds spectra
     def btnBrwPure(self):
@@ -227,7 +236,7 @@ class EvooDec:
         
         pass
     
-    
+
     # >>> Create button for loading EVOO spectrum
     def btnBrwEVOO(self):
         
@@ -251,7 +260,7 @@ class EvooDec:
         
         pass
     
-    
+
     # >>> Open file dialog for selecting spectra of pure compounds
     def fileDialogRef(self):
         self.REF_FILE = filedialog.askopenfilename(
@@ -261,13 +270,13 @@ class EvooDec:
         self.labelFileRef.configure(text = fname, fg="green")
         self.loadRef()
         pass
-       
-        
+
+
     # >>> Open file dialog for selecting spectra of EVOO  
     def fileDialogEVOO(self):
         self.EVOO_FILE = filedialog.askopenfilename(
             initialdir = self.CURDIR+"/", title = "Select a file", 
-            filetypes=(("CSV (;)","*.csv"),("All files","*.*")))
+            filetypes=(("CSV (;)","*.csv"),("Excel","*.xls"),("Excel","*.xlsx")))
         fname = os.path.basename(self.EVOO_FILE)
         self.labelFileEVOO.configure(text = fname, fg="green")
         self.loadEVOO()
@@ -310,19 +319,35 @@ class EvooDec:
                         MW = np.array([float(x) for x in MW])
                         ind += 1
                         continue
+                    # 3rd line -> labels' color
+                    if(ind==2):
+                        COLORS = line.split(';')[1:]
+                        COLORS = [xx.strip(' \n\t\r') for xx in COLORS]
+                        ind += 1
+                        continue
                     # Read data lines
                     data += [line.split(';')]
                 else:
                     comments += line.strip("#")
         data = np.array(data,dtype=float)
 
-        # Check the file consistency -> TO BE DONE        
+        # Check the file consistency: the number of cols must be the same
+        # for all the data
+        nc_pig = len(pigments)
+        nc_mw  = len(MW)
+        nc_col = len(COLORS)
+        nc_dat = np.shape(data)[1]
+        if len(set([nc_pig,nc_mw,nc_col,nc_dat-1])) > 1:
+            raise Exception("Check consistency of reference file!")
+            #print(nc_pig,nc_mw,nc_col,nc_dat)
+        
         msg = "\nReference file correctly loaded!"
         
         self.X_REF    = data[:,0]    # First column is wavelength
         self.EPS_REF  = data[:,1:]   # Other column are epsilon
         self.PIGMENTS = pigments
         self.MW       = MW
+        self.COLORS   = COLORS
         
         self.X_REF_LIM = np.array([np.min(data[:,0]),np.max(data[:,0])])
         
@@ -334,33 +359,71 @@ class EvooDec:
         # Reload pigment checkbox
         self.selPigments()
         pass
-       
-        
+
+
     # >>> Load file for EVOO
     def loadEVOO(self):
-        out = '\nLoading EVOO      file: %s' % os.path.basename(self.EVOO_FILE)
+
+        ext = os.path.splitext(self.EVOO_FILE)[1]
+        out = '\nLoading EVOO      file: %s\n ... file type = %s)' % (os.path.basename(self.EVOO_FILE),ext)
         print(out)
         self.out_text.insert(tk.END,out)
         self.out_text.see(tk.END)
+
+        if(ext.lower() in ['.xlsx','.xls']):
+
+            # Load file using xlrd function (excel file)
+            # File structure:
+            # 1st col: wavelength (nm)
+            # 2nd col: absorbance
+
+            # Read file by using xlrd
+            wb = xlrd.open_workbook(self.EVOO_FILE)
+            sheet = wb.sheet_by_index(0)
         
-        # Load file using np.genfromtxt function
-        # File structure: csv file ; separated
-        # 1st col: wavelength (nm)
-        # 2nd col: absorbance
-        evoo_data = np.genfromtxt(self.EVOO_FILE,delimiter=';',
-             comments='#',encoding='utf-8-sig')
+            # Extracting number of columns
+            ncols = sheet.ncols
+            print("Number of columns     : %d" % ncols)
+            if(ncols == 2):
+                print(" ... detected 2 colums, we assume: | wavelength (nm) | Absorbance (a.u.) |")
+            elif(ncols > 2):
+                print(" ... detected >2 colums, we assume that the first two are: | wavelength (nm) | Absorbance (a.u.) |")
+                print("     all the other columns will be ignored!")
+
+            # Looking for the first row containing wavelength | absorbance data
+            evoo_data = []
+            for i in range(sheet.nrows):
+                row = sheet.row_values(i)
+                if(len(row) >= 2):
+                    try:
+                        evoo_data.append([float(row[0]),float(row[1])])
+                    except:
+                        pass
+            evoo_data = np.array(evoo_data,dtype=float) 
+
+        elif(ext.lower() in ['.csv']):       
+        
+            # Load file using np.genfromtxt function
+            # File structure: csv file ; separated
+            # 1st col: wavelength (nm)
+            # 2nd col: absorbance
+            evoo_data = np.genfromtxt(self.EVOO_FILE,delimiter=';',
+                comments='#',encoding='utf-8-sig')
              
-        # Check file integrity
-        dim = np.shape(evoo_data)[1]
-        if(dim < 2):
-            msg = "\nEVOO file must contain at least two columns!"
-            self.VALID = False
-        elif(dim > 2):
-            msg =  "\nEVOO file contains %d columns!\n" % dim
-            msg += "Only the first two cols will be considered"
+            # Check file integrity
+            dim = np.shape(evoo_data)[1]
+            if(dim < 2):
+                msg = "\nEVOO file must contain at least two columns!"
+                self.VALID = False
+            elif(dim > 2):
+                msg =  "\nEVOO file contains %d columns!\n" % dim
+                msg += "Only the first two cols will be considered"
             
+            else:
+                msg = "\nEVOO file correctly loaded!"
+
         else:
-            msg = "\nEVOO file correctly loaded!"
+            raise Exception('Only .csv, .xls or .xlsx file can be loaded!')
         
         self.X_EVOO   = evoo_data[:,0]
         self.ABS_EVOO = evoo_data[:,1]
@@ -379,7 +442,7 @@ class EvooDec:
         
         pass        
     
-    
+
     # >>> optPanel
     def optPanel(self):
 
@@ -425,6 +488,7 @@ class EvooDec:
         
         pass
     
+
     # >>> Reset button
     def btnRst(self):
         print("Reset default")
@@ -440,14 +504,14 @@ class EvooDec:
         self.textarea.insert(tk.END,self.VERSION)
         pass  
     
-    
+
     # >>> Call function bind to button process
     def btnProcSpec(self):
         X_REF,EPS_REF,X_EVOO,ABS_EVOO = self.processSpectra()
         self.plot(X_EVOO,ABS_EVOO,None,X_REF,EPS_REF)
         pass  
     
-  
+
     # >>> Function to check integrety of spectra
     def processSpectra(self):
         
@@ -572,11 +636,20 @@ class EvooDec:
                                    variable = self.ACTIVE_PIGMENTS[i])
             check.select()
             check.grid(column = 0,row=row,sticky="W")
-            label = tk.Label(self.pig_frame,width=2,bg=self.COLORS[i])
-            label.grid(column = 1,row=row,sticky="W")
         pass
+   
 
-        
+    # >>> Color chooser for pigments
+    def btnSelectColor(self,k):
+        # variable to store hexadecimal code of color
+        color_code = colorchooser.askcolor(title ="Choose color for pigment %s" % self.PIGMENTS[k])
+        if(color_code[1] != None):
+            # Update COLORS
+            self.COLORS[k] = color_code[1]
+            # Refresh color picker buttons
+            self.selColor()
+
+
     # >>> Button for executing deconvolution
     def btnExe(self):
         txt = "DECONVOLVE"
@@ -584,8 +657,7 @@ class EvooDec:
                            command=self.exeDec2,width=30)
         button.grid(column=0,row=0,pady=10,padx=10)
 
-        
-    
+
     # >>> TEST Execute Deconvolution 2
     def exeDec2(self):
         
@@ -627,10 +699,11 @@ class EvooDec:
 
         self.printResults(ABS_EVOO,ABS_CALC,PIGMENTS,concppm,'AUTO FITTING')
         self.plot(X_EVOO,ABS_EVOO,FILTER,X_REF,EPS_REF,ABS_CALC,ABS_CALC_CONTR)
-        
-    
+
+
     # >>> Plot spectra
-    def plot(self,X_EVOO,ABS_EVOO,FILTER=None,X_REF=[],EPS_REF=[],ABS_CALC=[],ABS_CALC_CONTR=[]):
+    def plot(self,X_EVOO,ABS_EVOO,FILTER=None,X_REF=[],EPS_REF=[],ABS_CALC=[],
+        ABS_CALC_CONTR=[]):
         
         # Graph configuration
         fig = plt.figure(figsize=(7.0,4.5), dpi=100) 
@@ -676,9 +749,8 @@ class EvooDec:
 
         pass
     
-    # ------------------------------------------------------------------------
-    # Deconvolution function
-    #
+
+    # >>> Deconvolution function
     def deconvolve(self,X,EPS_REF,ABS_EVOO,MW):
 
         self.out_text.insert(tk.END,"Executing deconvolution...\n")
@@ -726,6 +798,8 @@ class EvooDec:
         
         return concmol
 
+
+    # >>> Print final results
     def printResults(self,ABS_EVOO,ABS_CALC,PIGMENTS,concppm,txt):
         # +++ R^2 fitting
         ave = np.average(ABS_EVOO)
@@ -749,6 +823,7 @@ class EvooDec:
         self.textarea.insert(tk.END,out)
         pass
         
+
 # -----------------------------------------------------------------------------
 # MAIN PROGRAM
 #
