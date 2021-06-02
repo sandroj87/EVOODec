@@ -56,7 +56,8 @@ class EvooDec:
     
     # Flags
     VALID            = True  # Deconvolution
-    BASELINE         = False # Apply baseline correction
+    BASELINE         = False # Apply baseline correction (default False)
+    OPLEN            = 1.0   # Optical path length (default 1.0 cm)
     X_MIN            = 0 
     X_MAX            = 0
     DELTA_X          = 1
@@ -101,7 +102,7 @@ class EvooDec:
         self.cmd_frame.grid(row=0,column=0,sticky="N",pady=10,padx=10)
         
         self.opt_frame = tk.LabelFrame(self.left_col,
-            text="Step 2: Select spectral window",fg="blue",
+            text="Step 2: Apply corrections and select spectral window",fg="blue",
             borderwidth = 0, highlightthickness = 0)
         self.opt_frame.grid(row=1,column=0,sticky="NW",pady=10,padx=10)
         
@@ -129,6 +130,7 @@ class EvooDec:
         self.out_text.insert(tk.END,"Welcome in EVOO deconvolution program\n")
 
         # +++ Initzialize tk variables
+        self.OPLEN_SEL    = tk.DoubleVar(value=self.OPLEN)
         self.LBL_REF_MIN  = tk.DoubleVar()
         self.LBL_REF_MAX  = tk.DoubleVar()
         self.LBL_REF_PTS  = tk.IntVar()
@@ -159,7 +161,7 @@ class EvooDec:
         self.slider = []
         self.CONC_PPM_VAL = []
         row = 1
-        # ASSUMIAMO TRIOLEINA SEMPRE PRIMO SPETTRO
+        # Here we always consider TRIOLEIN as a first spectrum of the list
         for i,p in enumerate(self.PIGMENTS):
             row += 1
             self.CONC_PPM_VAL.append(tk.DoubleVar())
@@ -280,7 +282,7 @@ class EvooDec:
         self.out_text.see(tk.END)
         
         # Load absorption spectra from CSV file ";" separated
-        # First column  : wavelenght(nm)
+        # First column  : wavelength(nm)
         # Other columns : molar extinsion coefficient (M^-1cm-1)
         # First line    : Pigment name
         # Second line   : molecular weight
@@ -317,7 +319,7 @@ class EvooDec:
         # Check the file consistency -> TO BE DONE        
         msg = "\nReference file correctly loaded!"
         
-        self.X_REF    = data[:,0]    # First column is wavelenght
+        self.X_REF    = data[:,0]    # First column is wavelength
         self.EPS_REF  = data[:,1:]   # Other column are epsilon
         self.PIGMENTS = pigments
         self.MW       = MW
@@ -380,43 +382,46 @@ class EvooDec:
     
     # >>> optPanel
     def optPanel(self):
+
+        # Optical path length
+        tk.Label(self.opt_frame,text="Optical path length").grid(row=0,column=0,sticky='W')
+        tk.Entry(self.opt_frame,textvariable=self.OPLEN_SEL,width=10,justify='center').grid(row=0,column=2)
+        tk.Label(self.opt_frame,text="cm").grid(row=0,column=3,sticky='W')
         
         # Checkbox for baseline correction
-        tk.Checkbutton(self.opt_frame,variable=self.BASELINE,
-            text="Apply baseline correction").grid(column=0,row=0,sticky="W",columnspan=2)
+        tk.Label(self.opt_frame,text="Apply baseline correction").grid(row=1,column=0,sticky='W')
+        tk.Checkbutton(self.opt_frame,variable=self.BASELINE).grid(row=1,column=2,sticky="W")
 
-        # Row labels
-        # tk.Label(self.opt_frame,text="Wavelength").grid(row=1,column=0,sticky='W')
-        tk.Label(self.opt_frame,text="Start (nm)").grid(row=2,column=0,sticky='W')
-        tk.Label(self.opt_frame,text="End (nm)").grid(row=3,column=0,sticky='W')
-        tk.Label(self.opt_frame,text="Points").grid(row=4,column=0,sticky='W')
+        # Table for spectral window
+        tk.Label(self.opt_frame,text="Start (nm)").grid(row=3,column=0,sticky='W')
+        tk.Label(self.opt_frame,text="End (nm)").grid(row=4,column=0,sticky='W')
+        tk.Label(self.opt_frame,text="Points").grid(row=5,column=0,sticky='W')
         
         # Reference data
-        tk.Label(self.opt_frame,text="Reference").grid(row=1,column=1)
-        tk.Label(self.opt_frame,textvariable=self.LBL_REF_MIN).grid(row=2,column=1)
-        tk.Label(self.opt_frame,textvariable=self.LBL_REF_MAX).grid(row=3,column=1)
-        tk.Label(self.opt_frame,textvariable=self.LBL_REF_PTS).grid(row=4,column=1)
+        tk.Label(self.opt_frame,text="Reference").grid(row=2,column=1)
+        tk.Label(self.opt_frame,textvariable=self.LBL_REF_MIN).grid(row=3,column=1)
+        tk.Label(self.opt_frame,textvariable=self.LBL_REF_MAX).grid(row=4,column=1)
+        tk.Label(self.opt_frame,textvariable=self.LBL_REF_PTS).grid(row=5,column=1)
 
         # EVOO default
-        tk.Label(self.opt_frame,text="EVOO (file)").grid(row=1,column=2)
-        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_MIN).grid(row=2,column=2)
-        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_MAX).grid(row=3,column=2)
-        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_PTS).grid(row=4,column=2)
+        tk.Label(self.opt_frame,text="EVOO (file)").grid(row=2,column=2)
+        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_MIN).grid(row=3,column=2)
+        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_MAX).grid(row=4,column=2)
+        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_PTS).grid(row=5,column=2)
         
         # EVOO data
-        tk.Label(self.opt_frame,text="EVOO (proc)").grid(row=1,column=3)
-        tk.Entry(self.opt_frame,textvariable=self.X_SEL_MIN,width=10,justify='center').grid(row=2,column=3)
-        tk.Entry(self.opt_frame,textvariable=self.X_SEL_MAX,width=10,justify='center').grid(row=3,column=3)
-        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_PTS).grid(row=4,column=3)
+        tk.Label(self.opt_frame,text="EVOO (proc)").grid(row=2,column=3)
+        tk.Entry(self.opt_frame,textvariable=self.X_SEL_MIN,width=10,justify='center').grid(row=3,column=3)
+        tk.Entry(self.opt_frame,textvariable=self.X_SEL_MAX,width=10,justify='center').grid(row=4,column=3)
+        tk.Label(self.opt_frame,textvariable=self.LBL_EVOO_PTS).grid(row=5,column=3)
 
         # Button process spectra  
         btn = tk.Button(self.opt_frame,text="PREVIEW",command=self.btnProcSpec)
-        btn.grid(row=5,column=3,pady=2)
+        btn.grid(row=6,column=3,pady=2)
 
         # Button to reset        
         btn = tk.Button(self.opt_frame,text="RESET",command=self.btnRst)
-        btn.grid(row=5,column=2,pady=2)
-
+        btn.grid(row=6,column=2,pady=2)
         
         pass
     
@@ -424,6 +429,7 @@ class EvooDec:
     def btnRst(self):
         print("Reset default")
         self.out_text.insert(tk.END,"\nReset EVOO spectrum to original\n")
+        #self.OPLEN_SEL.set(self.OPLEN)
         self.out_text.see(tk.END)
         self.X_SEL_MIN.set(round(self.X_EVOO_LIM[0],1))
         self.X_SEL_MAX.set(round(self.X_EVOO_LIM[1],1))
@@ -535,6 +541,12 @@ class EvooDec:
             self.out_text.insert(tk.END, 'Spectra are OK!\n')
             self.out_text.see(tk.END)
 
+        # Correct the absorbance for the optical path length
+        self.out_text.insert(tk.END, ' ... optical path length %3.1f cm\n' % self.OPLEN_SEL.get())
+        if(self.OPLEN_SEL.get() != 1.0):
+            self.out_text.insert(tk.END, '     -> normalize to 1.0\n')
+            ABS_EVOO = ABS_EVOO/self.OPLEN_SEL.get()
+
         # Apply baseline correction
         if(self.BASELINE.get() is True):
             print("Apply baseline correction")
@@ -637,8 +649,13 @@ class EvooDec:
         plt.xlim(np.min(X_EVOO),np.max(X_EVOO))
         plt.ylim(0,np.max(ABS_EVOO)+np.max(ABS_EVOO)*0.05)
         
-        # Plot EVOO spectrum (as Loaded by input)
-        plt.plot(self.X_EVOO,self.ABS_EVOO,'.',markersize=3,color = 'gray')
+        # Process experimental EVOO spectrum for plot
+        EXP = self.ABS_EVOO                 # as loaded by inpute (no data processing)
+        EXP = EXP/self.OPLEN_SEL.get()      # corrected for optical path length (normalization to 1.0 cm)
+        EXP = EXP - np.min(self.ABS_EVOO)   # corrected for baseline
+
+        # Plot EVOO spectrum (as Loaded by input and corrected for baseline and optical path length)
+        plt.plot(self.X_EVOO,EXP,'.',markersize=3,color = 'gray')
         if len(X_REF): plt.plot(X_REF,ABS_EVOO,'-k',linewidth=0.8,label='EVOO')
 
         if len(ABS_CALC):
@@ -651,6 +668,11 @@ class EvooDec:
                          label='{i}'.format(i=PIGMENTS[i]))
 
         plt.legend(loc='best')
+
+        # Save data in txt files (to be done...)
+        #if(len(ABS_CALC_CONTR) > 0):
+        #    out = np.column_stack((X_REF,ABS_CALC_CONTR,ABS_CALC))
+        #    np.savetxt('deconvolution.csv',out,fmt="%16.8E",delimiter=";")
 
         pass
     
