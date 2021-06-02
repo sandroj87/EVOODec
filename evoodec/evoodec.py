@@ -167,10 +167,10 @@ class EvooDec:
             self.CONC_PPM_VAL.append(tk.DoubleVar())
             if(i==0):
                 slider = tk.Scale(self.pig_frame,orient=tk.HORIZONTAL,
-                length=100, from_=0, to=8E6,resolution=2E4,variable=self.CONC_PPM_VAL[i])
+                length=200, from_=0, to=8E6,resolution=2E4,variable=self.CONC_PPM_VAL[i])
             else:
                 slider = tk.Scale(self.pig_frame,orient=tk.HORIZONTAL,
-                length=100, from_=0, to=20,resolution=0.1,variable=self.CONC_PPM_VAL[i])
+                length=200, from_=0, to=20,resolution=0.1,variable=self.CONC_PPM_VAL[i])
             slider.grid(column=2,row=row)
             self.slider.append(slider)
             self.slider[i].bind("<ButtonRelease-1>", self.changeConc)
