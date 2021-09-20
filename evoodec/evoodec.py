@@ -39,6 +39,7 @@ class EvooDec:
 
     # Properties of EvooDec class
     VERSION         = "EVOODec - Version 1.1"
+    AUTHORS         = "Sandro Jurinovich"
     
     # Files
     WORKDIR          = os.getcwd()
@@ -46,7 +47,7 @@ class EvooDec:
     REF_FILE         = ''
     DEF_EVOO_FILE    = os.path.join(WORKDIR,"spectra/evoo_test.csv")
     EVOO_FILE        = ''
-    LOGO             = os.path.join(WORKDIR,"logo.png")
+    LOGO             = os.path.join(WORKDIR,"logo.ico")
 
     # Data
     IPRINT           = 2
@@ -83,9 +84,8 @@ class EvooDec:
     def __init__(self,master):
 
         master.title(self.VERSION)
-        #master.geometry("1024x800")
         master.protocol("WM_DELETE_WINDOW", self.on_closing)
-        master.iconbitmap("%s/%s" % (self.WORKDIR,"logo.ico"))
+        master.iconbitmap("%s" % self.LOGO)
         self.master = master
 
         # +++ Create main column layout
@@ -127,7 +127,13 @@ class EvooDec:
 
         self.out_text = tk.Text(self.rigth_col,height=14, width=50)
         self.out_text.grid(row=1,column=1)
-        self.out_text.insert(tk.END,"Welcome in EVOO deconvolution program\n")
+
+        # Print welcome message on output panel
+        self.out_text.insert(tk.END,"-"*40+"\n")
+        self.out_text.insert(tk.END,"Welcome in EVOODec!\n - a spectral deconvolution tool\n")
+        self.out_text.insert(tk.END,"Program version : %s\n" % self.VERSION)
+        self.out_text.insert(tk.END,"Created by      : %s\n" % self.AUTHORS)
+        self.out_text.insert(tk.END,"-"*40+"\n")
 
         # +++ Initzialize tk variables
         self.OPLEN_SEL    = tk.DoubleVar(value=self.OPLEN)
@@ -188,7 +194,6 @@ class EvooDec:
     # >>> Render button for choose pigiment colors
     def selColor(self):
         for i,p in enumerate(self.PIGMENTS):
-            print(i)
             tk.Button(self.pig_frame,width=2,command=partial(self.btnSelectColor,i),bg=self.COLORS[i]).grid(column = 1,row=i+2)
 
 
@@ -201,7 +206,6 @@ class EvooDec:
         X_REF,EPS_REF,X_EVOO,ABS_EVOO = self.processSpectra()
         ABS_CALC_CONTR = EPS_REF * (concppm*self.EVOO_DENSITY/(self.MW*1000))
         ABS_CALC       = np.sum(ABS_CALC_CONTR,axis=1)
-        #print(ABS_CALC)
         FILTER = np.ones(len(self.PIGMENTS),dtype=bool)
         self.printResults(ABS_EVOO,ABS_CALC,self.PIGMENTS,concppm,'MANUAL FITTING')
         self.plot(X_EVOO,ABS_EVOO,FILTER,X_REF,EPS_REF,ABS_CALC,ABS_CALC_CONTR)
@@ -240,7 +244,7 @@ class EvooDec:
     # >>> Create button for loading EVOO spectrum
     def btnBrwEVOO(self):
         
-        txt = "Load EVOO spectrum"
+        txt = "Load sample spectrum"
         button = tk.Button(self.cmd_frame,text=txt, 
             command = self.fileDialogEVOO, width=20)
         button.grid(column = 0, row = 1, pady=2)
@@ -251,7 +255,7 @@ class EvooDec:
             txt    = os.path.basename(self.EVOO_FILE)
             txtcol = "green"
         else:
-            txt    = "Please select file of EVOO spectrum"
+            txt    = "Please select sample spectrum"
             txtcol = "red"
 
         self.labelFileEVOO = tk.Label(self.cmd_frame,text=txt,
@@ -315,7 +319,6 @@ class EvooDec:
                     # 2nd line -> molecular weights
                     if(ind==1):
                         MW = line.split(';')[1:]
-                        #print(MW)
                         MW = np.array([float(x) for x in MW])
                         ind += 1
                         continue
@@ -339,7 +342,6 @@ class EvooDec:
         nc_dat = np.shape(data)[1]
         if len(set([nc_pig,nc_mw,nc_col,nc_dat-1])) > 1:
             raise Exception("Check consistency of reference file!")
-            #print(nc_pig,nc_mw,nc_col,nc_dat)
         
         msg = "\nReference file correctly loaded!"
         
@@ -365,7 +367,7 @@ class EvooDec:
     def loadEVOO(self):
 
         ext = os.path.splitext(self.EVOO_FILE)[1]
-        out = '\nLoading EVOO      file: %s\n ... file type = %s)' % (os.path.basename(self.EVOO_FILE),ext)
+        out = '\nLoading sample    file: %s' % os.path.basename(self.EVOO_FILE)
         print(out)
         self.out_text.insert(tk.END,out)
         self.out_text.see(tk.END)
@@ -377,7 +379,7 @@ class EvooDec:
             # 1st col: wavelength (nm)
             # 2nd col: absorbance
 
-            # Read file by using xlrd
+            # Read file by using xlrd (both .xls and .xlsx)
             wb = xlrd.open_workbook(self.EVOO_FILE)
             sheet = wb.sheet_by_index(0)
         
@@ -517,9 +519,9 @@ class EvooDec:
         
         warn   = ''
 
-        # Pre process spectra
-        print("\n\nPre-process spectra ...")
-        self.out_text.insert(tk.END, '\nPre processing-spectra\n')
+        # Spectrum pre-processing
+        print("\n\nSpectrum pre-processing ...")
+        self.out_text.insert(tk.END, '\nSpectrum pre-processing\n')
         X_SEL_MIN = self.X_SEL_MIN.get()
         X_SEL_MAX = self.X_SEL_MAX.get()
         
@@ -670,7 +672,6 @@ class EvooDec:
         for i,p in enumerate(self.PIGMENTS):
             print(p,self.ACTIVE_PIGMENTS[i].get())
             FILTER[i] = self.ACTIVE_PIGMENTS[i].get()
-        #print(FILTER)
         
         # Apply Filter
         print("Call deconvolution function...")
@@ -682,7 +683,7 @@ class EvooDec:
         #deconvolution = Deconvolution(self,X_REF,EPS_REF,ABS_EVOO,MW)
         concmol = self.deconvolve(X_REF,EPS_REF,ABS_EVOO,MW)
         concppm = concmol*MW*1000/self.EVOO_DENSITY
-        #print(concppm)
+
         # Set sliders values
         j = 0
         for i,p in enumerate(self.PIGMENTS):
@@ -724,9 +725,13 @@ class EvooDec:
         
         # Process experimental EVOO spectrum for plot
         EXP = self.ABS_EVOO                 # as loaded by inpute (no data processing)
-        EXP = EXP/self.OPLEN_SEL.get()      # corrected for optical path length (normalization to 1.0 cm)
-        EXP = EXP - np.min(self.ABS_EVOO)   # corrected for baseline
 
+        # Correct experimental points if option is checked
+        if(self.BASELINE.get()):
+            EXP = EXP - np.min(self.ABS_EVOO)   # corrected for baseline
+
+        EXP = EXP/self.OPLEN_SEL.get()      # corrected for optical path length (normalization to 1.0 cm)
+        
         # Plot EVOO spectrum (as Loaded by input and corrected for baseline and optical path length)
         plt.plot(self.X_EVOO,EXP,'.',markersize=3,color = 'gray')
         if len(X_REF): plt.plot(X_REF,ABS_EVOO,'-k',linewidth=0.8,label='EVOO')
