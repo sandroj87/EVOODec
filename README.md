@@ -3,7 +3,7 @@
 
 Reference paper
 
-S. Jurinovich and V. Domenici, *"A digital tool for the analysis of UV-vis spectra of olive oils and educational activities with high school and undergraduate students"*, J. Chem. Education, Submitted article.
+S. Jurinovich and V. Domenici, *"A digital tool for the analysis of UV-vis spectra of olive oils and educational activities with high school and undergraduate students"*, J. Chem. Education,  2022, 99, 2, 787–798. DOI: 10.1021/acs.jchemed.1c01015.
 
 EVOODec is a tool for calculating the concentration of the pigments usually 
 cointened in the extra-virgin olive oil from a spectral deconvolution
